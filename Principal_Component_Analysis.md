@@ -285,3 +285,100 @@ text(pc1for,pc2for, labels = as.character(NHlfor$Player),col= as.numeric(NHlfor$
 ```
 
 ![](Principal_Component_Analysis_files/figure-gfm/nhl%20data-4.png)<!-- -->
+
+# Image Compression using PCA
+
+``` r
+GirlHat = read.csv('C:/Users/Bryce/Desktop/RStudio/DSCI 415/GirlwithHat.txt')
+names(GirlHat)[1:50]
+```
+
+    ##  [1] "Y"   "X1"  "X2"  "X3"  "X4"  "X5"  "X6"  "X7"  "X8"  "X9"  "X10" "X11"
+    ## [13] "X12" "X13" "X14" "X15" "X16" "X17" "X18" "X19" "X20" "X21" "X22" "X23"
+    ## [25] "X24" "X25" "X26" "X27" "X28" "X29" "X30" "X31" "X32" "X33" "X34" "X35"
+    ## [37] "X36" "X37" "X38" "X39" "X40" "X41" "X42" "X43" "X44" "X45" "X46" "X47"
+    ## [49] "X48" "X49"
+
+``` r
+X = as.matrix(GirlHat[,-1])
+x = seq(1:342)
+y = seq(1:342)
+par(pty="s")
+image(x,y,X,col=gray((0:341)/341))
+```
+
+![](Principal_Component_Analysis_files/figure-gfm/printing%20img-1.png)<!-- -->
+You can flip the image by doing the below code
+
+``` r
+par(pty="s")
+X = apply(X,2,rev)
+image(x,y,t(X),col=gray((0:341)/341))
+```
+
+![](Principal_Component_Analysis_files/figure-gfm/flipping%20img-1.png)<!-- -->
+
+## Doing SVD on image
+
+``` r
+Xsvd = svd(X)
+Xsvd$d[1:100]
+```
+
+    ##   [1] 169.8831450  27.7070887  21.4901925  16.9194793  15.4021686  14.5127204
+    ##   [7]  12.0057965  10.7363715   8.8506194   8.2958627   6.9903938   6.3962857
+    ##  [13]   6.2446630   6.0993503   5.7403705   5.6020132   5.4846945   4.8541030
+    ##  [19]   4.5804678   4.4483930   4.3284620   4.1331781   3.8036200   3.5261088
+    ##  [25]   3.4858363   3.4109601   3.2142791   3.1184794   3.0401461   2.9885597
+    ##  [31]   2.7932424   2.7568325   2.7174339   2.7073164   2.6355058   2.5888812
+    ##  [37]   2.5344429   2.5046815   2.4290473   2.4019975   2.3335297   2.2320734
+    ##  [43]   2.2214706   2.1746607   2.1195658   2.0751659   2.0042316   1.9899940
+    ##  [49]   1.9496544   1.9212357   1.8889337   1.8415948   1.7984741   1.7773555
+    ##  [55]   1.7370913   1.6900752   1.6758318   1.6654965   1.6418754   1.6096536
+    ##  [61]   1.5797415   1.5671153   1.5406670   1.5112244   1.4849483   1.4348266
+    ##  [67]   1.4084934   1.3736059   1.3670433   1.3585713   1.3157449   1.2749949
+    ##  [73]   1.2561978   1.2395967   1.2271299   1.2016318   1.1737088   1.1672778
+    ##  [79]   1.1406095   1.1319696   1.1195818   1.1032419   1.0934276   1.0748342
+    ##  [85]   1.0577393   1.0329042   1.0243921   1.0130424   1.0024680   0.9870664
+    ##  [91]   0.9848263   0.9605501   0.9525543   0.9402360   0.9110593   0.9052684
+    ##  [97]   0.8871735   0.8809918   0.8646206   0.8507517
+
+``` r
+# k = 2
+par(pty="s")
+D2 = diag(Xsvd$d[1:2])
+U2 = Xsvd$u[,1:2]
+V2 = Xsvd$v[,1:2]
+Xapprox2 = U2%*%D2%*%t(V2)
+image(x,y,t(Xapprox2),col=gray((0:341)/341))
+```
+
+![](Principal_Component_Analysis_files/figure-gfm/compressed%20image-1.png)<!-- -->
+
+# Image function
+
+``` r
+image.svd = function(Xsvd,k=10){
+    par(pty="s")
+    Dk = diag(Xsvd$d[1:k])
+    Uk = Xsvd$u[,1:k]
+    Vk = Xsvd$v[,1:k]
+    Xk = Uk%*%Dk%*%t(Vk)
+    p = dim(Xsvd$u)[1]
+    x = seq(1:p)
+    y = x
+    image(x,y,t(Xk),col=gray((0:(p-1))/(p-1)))
+    title(paste(k," Dimensional Approximation"))
+}
+image.svd(Xsvd,k=10)
+```
+
+![](Principal_Component_Analysis_files/figure-gfm/image%20function-1.png)<!-- -->
+
+Lets adjust K to 50.
+
+``` r
+image.svd(Xsvd,k=50)
+```
+
+![](Principal_Component_Analysis_files/figure-gfm/adjusting%20k-1.png)<!-- -->
