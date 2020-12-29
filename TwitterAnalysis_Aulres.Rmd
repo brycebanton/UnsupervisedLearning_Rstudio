@@ -1,0 +1,173 @@
+---
+title: "Twitter Analysis"
+output: github_document
+---
+
+## Loading in Data and functions to help
+```{r}
+load("C:/Users/Bryce/Desktop/RStudio/DSCI 415/Wendys.Rdata")
+load("C:/Users/Bryce/Desktop/RStudio/DSCI 415/TextFunctions.Rdata")
+```
+## Libraries Needed
+```{r libraries}
+library(twitteR)
+library(rtweet)
+library(lubridate)
+library(stringr)
+library(wordcloud)
+library(tm)
+library(arules)
+library(arulesViz)
+```
+
+
+## Looking at data and picking what I want to minimize computing needed
+```{r data}
+Wendys.df = Wendys[,c(1,3,4,5,7,13,14,78,79,82)]
+Wendys.df
+names(Wendys.df)
+
+```
+
+## Getting Day and Hour of when the tweets were done
+```{r making dates}
+Wendys.df$date = ymd_hms(Wendys.df$created_at)
+Wendys.df$hour = hour(Wendys.df$date) + minute(Wendys.df$date)/60
+Wendys.df$day = weekdays(as.Date(Wendys.df$date))
+
+Wendys.df$text[1:10]
+```
+
+
+## Using Functions to clean the tweets text
+```{r cleaning}
+
+clean1 <- textScrubber(Wendys.df)
+clean1[1:10]
+
+clean2<-clean.text(Wendys.df$text)
+clean2[1:10]
+
+clean3<- CleanTweets(clean2)
+clean3[1:20]
+
+
+
+```
+
+## Replacing words not needed with blank spaces or fixing words
+```{r cleaning more}
+clean4 <- str_replace_all(clean3,"wendys"," ")
+clean4 <- str_replace_all(clean4,"isn't","isnt")
+clean4 <- str_replace_all(clean4,"'re"," ")
+clean4 <- str_replace_all(clean4,"'s"," ")
+clean4 <- str_replace_all(clean4,"'d"," ")
+clean4 <- str_replace_all(clean4,"'re"," ")
+
+```
+
+## Clean Corpus function
+```{r corpus function}
+CleanedCorpus = function(tweets) {
+  tweetCorpus = Corpus(VectorSource(tweets))
+  tweetCorpus = tm_map(tweetCorpus, content_transformer(tolower))
+  tweetCorpus = tm_map(tweetCorpus, removePunctuation)
+  tweetCorpus = tm_map(tweetCorpus, removeNumbers)
+  tweetCorpus = tm_map(tweetCorpus, removeWords,stopwords("english"))
+  return(tweetCorpus)
+}
+
+
+
+```
+
+## Making a Corpus of tweets (cleaned), formatting, and turning it into a document matrix
+```{r document matrix}
+WendysCorpus = CleanedCorpus(clean4)
+
+temp = sapply(WendysCorpus,function(row) iconv(row, "latin1", "ASCII", sub = ""))
+WendyCorpus2 =  Corpus(VectorSource(temp))
+
+WendysTDM = TermDocumentMatrix(WendysCorpus)
+WendysCorp.mat = as.matrix(WendysTDM)
+```
+
+
+```{r frequency of words}
+
+word.freq = sort(rowSums(WendysCorp.mat), decreasing = T)
+word.freq[1:40]
+word.freq1 = word.freq[1:20]
+word.freq2 = word.freq[21:40]
+
+
+```
+
+## Making barplots, wordclouds, and histograms of the words found
+```{r plotting wordclouds and barplots}
+
+barplot(word.freq1,xlab = "1-20 Words", cex.names = .6)
+barplot(word.freq2,xlab = "21-40 Words", cex.names = .6)
+wordcloud(words = names(word.freq),freq = word.freq, random.order = F, col = rainbow(1000),min.freq = 5,max.words = 30)
+wordcloud(words = names(word.freq),freq = word.freq, random.order = F, col = rainbow(1000),min.freq = 10,max.words = 50)
+wordcloud(words = names(word.freq1),freq = word.freq1, random.order = F, col = rainbow(1000),min.freq = 5,max.words = 30)
+wordcloud(words = names(word.freq1),freq = word.freq2, random.order = F, col = rainbow(1000),min.freq = 10,max.words = 50)
+hist(Wendys.df$hour, main = " Wendys Tweets 24 Hours", xlab = "Hours", col="Blue")
+barplot(table(Wendys.df$day), main = " Tweets Per Day Wendys", xlab = "Weekdays", col="Blue")
+
+
+```
+
+## Making a matrix off of the corpus matrix
+```{r matrix of corpus}
+
+wendys.mat = as.matrix(WendysCorp.mat)
+
+temp = t(WendysCorp.mat)
+temp [temp>1] = 1
+
+
+```
+
+## Doing Arules (apriori)
+```{r arules}
+
+wendys.trans <- as(temp,"transactions")
+wendys.rules = apriori(wendys.trans) 
+
+```
+
+## Plotting the Association rules
+```{r plotting arules}
+wendys.rules = apriori(wendys.trans, parameter = list(support = .22, conf = .85)) 
+plot(wendys.rules, "graph")
+
+wendys.rules2 = apriori(wendys.trans, parameter = list(support = .22, conf = .8)) 
+plot(wendys.rules2, "graph")
+
+wendys.rules3 = apriori(wendys.trans, parameter = list(support = .20, conf = .8)) 
+plot(wendys.rules3, "graph")
+
+wendys.rules4 = apriori(wendys.trans, parameter = list(support = .18, conf = .6)) 
+plot(wendys.rules4, "graph")
+
+
+```
+
+## Sorting the association rules by lift
+```{r sorting rules by lift}
+
+wendys.sort = sort(wendys.rules, by = "lift")
+wendys.sort2 = sort(wendys.rules2, by = "lift")
+wendys.sort3 = sort(wendys.rules3, by = "lift")
+wendys.sort4 = sort(wendys.rules4, by = "lift")
+
+```
+
+## Looking at what words have highest lift 
+```{r looking at highest lift words}
+inspect(wendys.sort)
+inspect(wendys.sort2)
+inspect(wendys.sort3)
+inspect(wendys.sort4)
+```
